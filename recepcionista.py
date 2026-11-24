@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 from tronpy import Tron
 from tronpy.providers import HTTPProvider
 from tronpy.keys import PrivateKey
+from tronpy.exceptions import AddressNotFound
 
 load_dotenv()
 
@@ -39,10 +40,14 @@ lock_ciclo = threading.Lock()
 
 
 def obtener_saldos():
-    saldo_trx = float(client.get_account_balance(TRON_ADDRESS))
-    contrato_usdt = client.get_contract(USDT_CONTRACT)
-    saldo_usdt = contrato_usdt.functions.balanceOf(TRON_ADDRESS) / 1_000_000
-    return saldo_trx, saldo_usdt
+    """Devuelve (saldo_trx, saldo_usdt). Si la cuenta aún no tiene transacciones, devuelve 0.0."""
+    try:
+        saldo_trx = float(client.get_account_balance(TRON_ADDRESS))
+        contrato_usdt = client.get_contract(USDT_CONTRACT)
+        saldo_usdt = contrato_usdt.functions.balanceOf(TRON_ADDRESS) / 1_000_000
+        return saldo_trx, saldo_usdt
+    except AddressNotFound:
+        return 0.0, 0.0
 
 
 def asegurar_gas_trx() -> bool:
@@ -117,6 +122,8 @@ def obtener_historial_trongrid() -> dict:
         "limit": 100
     }
     resp = requests.get(url, params=params, headers=headers, timeout=15)
+    if resp.status_code == 404:
+        return {}
     resp.raise_for_status()
     datos = resp.json().get("data", [])
     return {tx["transaction_id"].strip().lower(): tx for tx in datos}
@@ -231,12 +238,12 @@ def puentear_a_arbitrum():
     return {"puenteado": True, "monto": monto_enviar, "txid": txid}
 
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 def health():
     return {"status": "online", "service": "recepcionista-tron"}
 
 
-@app.api_route("/tick", methods=["GET", "POST"])
+@app.api_route("/tick", methods=["GET", "POST", "HEAD"])
 def ejecutar_tick():
     if not lock_ciclo.acquire(blocking=False):
         return {"status": "busy", "message": "Ciclo en ejecución"}
