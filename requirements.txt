@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+tronpy
+psycopg2-binary
+requests
+python-dotenv
