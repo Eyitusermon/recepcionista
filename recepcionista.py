@@ -40,14 +40,20 @@ lock_ciclo = threading.Lock()
 
 
 def obtener_saldos():
-    """Devuelve (saldo_trx, saldo_usdt). Si la cuenta aún no tiene transacciones, devuelve 0.0."""
+    """Consulta TRX y USDT por separado para leer USDT incluso con 0 TRX."""
     try:
         saldo_trx = float(client.get_account_balance(TRON_ADDRESS))
+    except AddressNotFound:
+        saldo_trx = 0.0
+
+    try:
         contrato_usdt = client.get_contract(USDT_CONTRACT)
         saldo_usdt = contrato_usdt.functions.balanceOf(TRON_ADDRESS) / 1_000_000
-        return saldo_trx, saldo_usdt
-    except AddressNotFound:
-        return 0.0, 0.0
+    except Exception as e:
+        print(f"⚠️ Error leyendo balance USDT: {e}")
+        saldo_usdt = 0.0
+
+    return saldo_trx, saldo_usdt
 
 
 def asegurar_gas_trx() -> bool:
