@@ -191,10 +191,12 @@ def obtener_minimo_changenow() -> float:
         "fromCurrency": "usdt",
         "toCurrency": "eth",
         "fromNetwork": "trx",
-        "toNetwork": "arb"
+        "toNetwork": "arbitrum",
+        "flow": "standard"
     }
     res = requests.get(url, params=params, headers=headers, timeout=10)
-    res.raise_for_status()
+    if not res.ok:
+        raise RuntimeError(f"ChangeNOW min-amount ({res.status_code}): {res.text}")
     return float(res.json().get("minAmount", 15.0))
 
 
@@ -205,12 +207,14 @@ def crear_orden_changenow(monto: float) -> str:
         "fromCurrency": "usdt",
         "toCurrency": "eth",
         "fromNetwork": "trx",
-        "toNetwork": "arb",
+        "toNetwork": "arbitrum",
         "fromAmount": monto,
-        "address": VAULT_ADDRESS
+        "address": VAULT_ADDRESS,
+        "flow": "standard"
     }
     res = requests.post(url, json=payload, headers=headers, timeout=15)
-    res.raise_for_status()
+    if not res.ok:
+        raise RuntimeError(f"ChangeNOW exchange ({res.status_code}): {res.text}")
     return res.json().get("payinAddress")
 
 
